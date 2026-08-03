@@ -1,0 +1,430 @@
+/* ===== Pixel-art theme ===== */
+:root {
+  --green: #b6e89a;
+  --green-dark: #98c97e;
+  --ink: #2b2440;
+  --purple: #8a6db0;
+  --purple-light: #c79be8;
+  --coin: #6a4fb5;
+  --red: #e86a7a;
+  --bg: #ffffff;
+  --border: 4px solid var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Press Start 2P", monospace;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+img {
+  image-rendering: pixelated;
+}
+
+.view {
+  min-height: 100vh;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.title {
+  font-size: 28px;
+  letter-spacing: 2px;
+  margin: 0 0 24px;
+  text-align: center;
+}
+
+/* ===== Panels / boxes ===== */
+.panel {
+  background: var(--green);
+  border: var(--border);
+  border-radius: 2px;
+  padding: 18px 20px;
+  box-shadow: 6px 6px 0 rgba(43, 36, 64, 0.25);
+}
+
+.panel-title {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.display {
+  text-align: center;
+  font-size: 28px;
+  padding: 22px 18px;
+  letter-spacing: 1px;
+}
+
+.display.score {
+  font-size: 30px;
+  margin-top: 16px;
+  min-width: 320px;
+}
+
+/* ===== Inputs & buttons ===== */
+.pixel-input {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 12px 12px;
+  border: var(--border);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+}
+
+.pixel-input.full,
+.pixel-btn.full {
+  width: 100%;
+  display: block;
+  margin-bottom: 14px;
+}
+
+.pixel-input:focus {
+  background: #fbfff5;
+}
+
+.pixel-btn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 12px 16px;
+  border: var(--border);
+  border-radius: 2px;
+  background: #4a4458;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(43, 36, 64, 0.35);
+  transition: transform 0.05s ease;
+}
+
+.pixel-btn:hover {
+  filter: brightness(1.08);
+}
+
+.pixel-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(43, 36, 64, 0.35);
+}
+
+.pixel-btn.green {
+  background: var(--green-dark);
+  color: var(--ink);
+}
+
+.pixel-btn.red {
+  background: var(--red);
+}
+
+.pixel-btn.small {
+  font-size: 10px;
+  padding: 8px 10px;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+
+.input-row .pixel-input {
+  flex: 1;
+}
+
+.field-label {
+  display: block;
+  font-size: 10px;
+  margin: 4px 0 6px;
+  opacity: 0.8;
+}
+
+.error {
+  color: var(--red);
+  font-size: 11px;
+  margin-top: 12px;
+}
+
+.hint {
+  font-size: 10px;
+  opacity: 0.85;
+  margin: 10px 0 0;
+}
+
+.hint.center {
+  text-align: center;
+}
+
+/* ===== Login ===== */
+.login-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===== Dashboard ===== */
+.topbar {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  width: 100%;
+  max-width: 900px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.student-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.student-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.student-row .s-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-row .s-points {
+  background: var(--coin);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-size: 10px;
+}
+
+.student-row .icon-btn {
+  font-family: inherit;
+  font-size: 10px;
+  border: 2px solid var(--ink);
+  background: var(--green);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 5px 7px;
+}
+
+.student-row .icon-btn.del {
+  background: var(--red);
+  color: #fff;
+}
+
+/* ===== Session stage ===== */
+.stage {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 70vh;
+  justify-content: center;
+}
+
+.session-controls {
+  margin-top: 22px;
+}
+
+/* ===== Timer bar (mockup #1) ===== */
+.timer-wrap {
+  width: 360px;
+  /* Match the gap between the timer buttons and the score panel below
+     (.input-row 14px + .display.score 16px = 30px). */
+  margin-bottom: 30px;
+}
+
+.timer-bar {
+  position: relative;
+  height: 34px;
+  background: var(--purple);
+  border: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.timer-fill {
+  position: absolute;
+  inset: 0 0 0 0;
+  background: var(--green);
+  border-right: 4px solid var(--ink);
+  width: 100%;
+  transition: width 0.3s linear;
+}
+
+
+.timer-wrap.warn .timer-fill {
+  background: #f0c64a;
+}
+
+.timer-wrap.danger .timer-fill {
+  background: var(--red);
+}
+
+/* ===== Floating point effects ===== */
+/* Clipped overlay covering the stage: effects animate here and are
+   clipped to its bounds, so adding/removing them can't grow the page
+   or cause the layout to drift upward. */
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  overflow-anchor: none;
+  z-index: 10;
+}
+
+.fx {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Coin (Z / +1) */
+.fx-coin {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #b07be0, var(--coin));
+  border: 4px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22px;
+  animation: coin-pop 0.9s ease-out forwards;
+}
+
+@keyframes coin-pop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4) rotateY(0deg);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(-50%, -90%) scale(1.1) rotateY(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -220%) scale(0.9) rotateY(720deg);
+    opacity: 0;
+  }
+}
+
+/* +5 / +10 burst boxes */
+.fx-box {
+  padding: 14px 18px;
+  background: var(--green);
+  border: 4px solid var(--ink);
+  border-radius: 2px;
+  font-size: 28px;
+  color: var(--ink);
+  box-shadow: 5px 5px 0 rgba(43, 36, 64, 0.3);
+  animation: box-pop 0.9s ease-out forwards;
+}
+
+.fx-box.big {
+  /* Stay absolute (like .fx) so the box shrinks to its content instead of
+     stretching to the overlay width; it still anchors the ::before star. */
+  position: absolute;
+}
+
+.fx-box.big::before {
+  content: "";
+  position: absolute;
+  inset: -22px;
+  z-index: -1;
+  background: var(--purple-light);
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%,
+    21% 91%, 32% 57%, 2% 35%, 39% 35%
+  );
+  animation: star-spin 0.9s ease-out forwards;
+}
+
+@keyframes box-pop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3) rotate(-8deg);
+    opacity: 0;
+  }
+  30% {
+    transform: translate(-50%, -70%) scale(1.15) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -160%) scale(0.95) rotate(-3deg);
+    opacity: 0;
+  }
+}
+
+@keyframes star-spin {
+  0% {
+    transform: scale(0.4) rotate(0deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.4) rotate(60deg);
+    opacity: 0;
+  }
+}
+
+/* score bump feedback */
+.score.bump {
+  animation: bump 0.25s ease;
+}
+
+@keyframes bump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}

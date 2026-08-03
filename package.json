@@ -1,0 +1,14 @@
+{
+  "name": "points-counter",
+  "version": "1.0.0",
+  "description": "Pixel-art points counter app for students",
+  "type": "commonjs",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0"
+  }
+}

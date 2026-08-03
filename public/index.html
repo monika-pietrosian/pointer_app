@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Points Counter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <!-- ===== LOGIN VIEW ===== -->
+    <section id="view-login" class="view">
+      <div class="login-card">
+        <h1 class="title">POINTS</h1>
+        <form id="login-form" class="input-row">
+          <input
+            id="password"
+            type="password"
+            class="pixel-input"
+            placeholder="Password"
+            autocomplete="current-password"
+          />
+          <button type="submit" class="pixel-btn">Start</button>
+        </form>
+        <p id="login-error" class="error hidden">Wrong password</p>
+      </div>
+    </section>
+
+    <!-- ===== DASHBOARD VIEW ===== -->
+    <section id="view-dashboard" class="view hidden">
+      <header class="topbar">
+        <h1 class="title">POINTS</h1>
+        <button id="logout-btn" class="pixel-btn small">Log out</button>
+      </header>
+
+      <div class="dashboard-grid">
+        <div class="panel">
+          <h2 class="panel-title">Students</h2>
+          <form id="create-form" class="input-row">
+            <input
+              id="new-student-name"
+              type="text"
+              class="pixel-input"
+              placeholder="New student name"
+            />
+            <button type="submit" class="pixel-btn">Add</button>
+          </form>
+          <ul id="student-list" class="student-list"></ul>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Start a session</h2>
+          <label class="field-label">Active student</label>
+          <select id="active-student" class="pixel-input full"></select>
+
+          <button id="start-session-btn" class="pixel-btn full green">
+            Start session
+          </button>
+          <p class="hint">Keys during a session: <b>Z</b> +1 &nbsp; <b>X</b> +5 &nbsp; <b>C</b> +10</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SESSION VIEW ===== -->
+    <section id="view-session" class="view hidden">
+      <div class="stage" id="stage">
+        <!-- effects (coins, +5, +10) are injected into this clipped overlay -->
+        <div id="fx-layer" class="fx-layer"></div>
+
+        <div id="timer-wrap" class="timer-wrap hidden">
+          <div class="timer-bar">
+            <div class="timer-fill" id="timer-fill"></div>
+          </div>
+          <div class="panel display" id="timer-display">0:00</div>
+        </div>
+
+        <form id="timer-form" class="input-row timer-controls">
+          <input
+            id="timer-input"
+            type="text"
+            class="pixel-input"
+            placeholder="/ Enter a time  (e.g. 6:00, 90, 5 minutes)"
+          />
+          <button type="submit" class="pixel-btn">Set timer</button>
+          <button type="button" id="clear-timer-btn" class="pixel-btn small">Clear</button>
+        </form>
+
+        <div class="panel display score" id="score-display">Name: 0</div>
+
+        <div class="session-controls">
+          <button id="stop-session-btn" class="pixel-btn red">Stop session</button>
+        </div>
+        <p class="hint center">
+          <b>Z</b> +1 coin &nbsp;·&nbsp; <b>X</b> +5 &nbsp;·&nbsp; <b>C</b> +10
+        </p>
+      </div>
+    </section>
+
+    <script src="js/api.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/timer.js"></script>
+    <script src="js/students.js"></script>
+    <script src="js/session.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
