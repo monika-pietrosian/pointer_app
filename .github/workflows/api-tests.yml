@@ -1,0 +1,60 @@
+name: API tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      # The server does not read .env, so these are what it actually runs with.
+      TEACHER_PASSWORD: ci-test-password
+      SESSION_SECRET: ci-session-secret-not-a-real-one
+      PORT: "3000"
+      POINTS_API_URL: http://127.0.0.1:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: app_tests/requirements.txt
+
+      - run: pip install -r app_tests/requirements.txt
+
+      - name: Start API
+        run: |
+          node server/server.js > server.log 2>&1 &
+          echo $! > server.pid
+        # No wait loop here on purpose: the server_is_up fixture polls
+        # /api/session with exponential backoff, which is exactly the boot race
+        # exponential_backoff.py exists for.
+
+      - name: Run tests
+        run: pytest -n auto --dist load --junitxml=pytest-report.xml
+
+      - name: Stop API
+        if: always()
+        run: kill "$(cat server.pid)" 2>/dev/null || true
+
+      - name: Server log
+        if: failure()
+        run: cat server.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pytest-report
+          path: pytest-report.xml

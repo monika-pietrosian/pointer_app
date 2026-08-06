@@ -8,5 +8,10 @@
     "id": 2,
     "name": "Maciej",
     "points": 151
+  },
+  {
+    "id": 3,
+    "name": "Ada Lovelace",
+    "points": 5
   }
 ]

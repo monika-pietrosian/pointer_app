@@ -1,0 +1,1195 @@
+{
+  "info": {
+    "name": "Points Counter API",
+    "description": "Tests for the Points Counter Express API (server/server.js).\n\nAuth is a signed session cookie (express-session), not a bearer token: run \"Login\" first and Postman's cookie jar carries `connect.sid` on every later request.\n\nThe requests are ordered and stateful — run the whole collection top to bottom in the Collection Runner. Running a single request out of order may fail its assertions.\n\nStart the server with the matching password:\n\n    TEACHER_PASSWORD=\"Regierunk\" npm start\n\nThe server does NOT read .env, so a plain `npm start` uses the default password `teacher` — set the `password` variable to match whichever you used.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "Regierunk",
+      "type": "string"
+    },
+    {
+      "key": "studentName",
+      "value": "Ada Lovelace",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login - wrong password (401)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Start from a clean slate so a leftover cookie can't mask a 401.",
+                  "const jar = pm.cookies.jar();",
+                  "jar.clear(pm.variables.replaceIn('{{baseUrl}}'), (err) => {",
+                  "    if (err) { console.log('cookie jar clear failed:', err); }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rejects with 401', () => pm.response.to.have.status(401));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Wrong password' });",
+                  "});",
+                  "pm.test('does not open a session', () => {",
+                  "    // saveUninitialized:false means an untouched session sets no cookie.",
+                  "    pm.expect(pm.response.headers.has('Set-Cookie')).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"definitely-not-the-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "login"]
+            },
+            "description": "checkPassword() requires an exact string match against TEACHER_PASSWORD."
+          },
+          "response": []
+        },
+        {
+          "name": "Login - non-string password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rejects with 401', () => pm.response.to.have.status(401));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Wrong password' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "login"]
+            },
+            "description": "checkPassword() has an explicit `typeof password === 'string'` guard, so truthy non-strings are rejected too."
+          },
+          "response": []
+        },
+        {
+          "name": "Session - before login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reports logged out', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ loggedIn: false });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "session"]
+            },
+            "description": "/api/session is unguarded — it always answers, it just reports the state."
+          },
+          "response": []
+        },
+        {
+          "name": "Students - no session (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('guarded by requireAuth', () => pm.response.to.have.status(401));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Not authenticated' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Every /api/students* route sits behind requireAuth."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns ok', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ ok: true });",
+                  "});",
+                  "pm.test('issues a session cookie', () => {",
+                  "    pm.expect(pm.response.headers.has('Set-Cookie')).to.be.true;",
+                  "    pm.expect(pm.response.headers.get('Set-Cookie')).to.include('connect.sid');",
+                  "});",
+                  "pm.test('cookie is httpOnly', () => {",
+                  "    pm.expect(pm.response.headers.get('Set-Cookie')).to.include('HttpOnly');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "login"]
+            },
+            "description": "On success the server sets req.session.loggedIn and returns a connect.sid cookie. Postman stores it in the cookie jar for localhost and replays it automatically — no manual header needed."
+          },
+          "response": []
+        },
+        {
+          "name": "Session - after login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reports logged in', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ loggedIn: true });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "session"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Students CRUD",
+      "item": [
+        {
+          "name": "Create student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('returns the new student', () => {",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body.name).to.eql(pm.variables.replaceIn('{{studentName}}'));",
+                  "    pm.expect(body.points).to.eql(0);",
+                  "});",
+                  "pm.test('id is a positive number', () => {",
+                  "    pm.expect(body.id).to.be.a('number').and.to.be.above(0);",
+                  "});",
+                  "",
+                  "// Hand the id to every later request in the run.",
+                  "pm.collectionVariables.set('studentId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{studentName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Saves the returned id into the `studentId` collection variable for the requests that follow."
+          },
+          "response": []
+        },
+        {
+          "name": "Create student - trims whitespace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('name is trimmed', () => {",
+                  "    pm.expect(pm.response.json().name).to.eql('Grace Hopper');",
+                  "});",
+                  "",
+                  "// Clean this one up so it doesn't linger in students.json.",
+                  "pm.collectionVariables.set('throwawayId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   Grace Hopper   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "store.createStudent() applies String(name).trim()."
+          },
+          "response": []
+        },
+        {
+          "name": "Create student - cleanup throwaway",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset('throwawayId');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{throwawayId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{throwawayId}}"]
+            },
+            "description": "Housekeeping — removes the trimmed-name student created above."
+          },
+          "response": []
+        },
+        {
+          "name": "Create student - missing name (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Name is required' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create student - blank name (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Name is required' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "A whitespace-only name fails the `!String(name).trim()` check."
+          },
+          "response": []
+        },
+        {
+          "name": "List students",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('returns an array', () => pm.expect(body).to.be.an('array'));",
+                  "pm.test('contains the created student', () => {",
+                  "    const id = Number(pm.collectionVariables.get('studentId'));",
+                  "    pm.expect(body.some((s) => s.id === id)).to.be.true;",
+                  "});",
+                  "pm.test('every student has id, name, points', () => {",
+                  "    body.forEach((s) => {",
+                  "        pm.expect(s.id).to.be.a('number');",
+                  "        pm.expect(s.name).to.be.a('string');",
+                  "        pm.expect(s.points).to.be.a('number');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add points - +5",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('points are 5', () => {",
+                  "    pm.expect(pm.response.json().points).to.eql(5);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/points",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "points"]
+            },
+            "description": "This route is additive — delta is added to the existing total. Starting from 0, so 5."
+          },
+          "response": []
+        },
+        {
+          "name": "Add points - non-numeric delta is ignored",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('points unchanged at 5', () => {",
+                  "    pm.expect(pm.response.json().points).to.eql(5);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/points",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "points"]
+            },
+            "description": "store.addPoints() uses `Number(delta) || 0`, so garbage silently adds nothing — 200, not 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Add points - numeric string is accepted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('points are 15', () => {",
+                  "    // Number(\"10\") === 10, so a numeric string does count here",
+                  "    // (unlike PUT, which requires a real JSON number).",
+                  "    pm.expect(pm.response.json().points).to.eql(15);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": \"10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/points",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "points"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add points - clamps at zero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('points clamp to 0, never negative', () => {",
+                  "    pm.expect(pm.response.json().points).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": -1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/points",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "points"]
+            },
+            "description": "store.addPoints() floors the total at 0."
+          },
+          "response": []
+        },
+        {
+          "name": "Update student - name and points",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Ada L.'));",
+                  "pm.test('points replaced (not added)', () => pm.expect(body.points).to.eql(42));",
+                  "pm.test('id unchanged', () => {",
+                  "    pm.expect(body.id).to.eql(Number(pm.collectionVariables.get('studentId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ada L.\",\n  \"points\": 42\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "PUT REPLACES points, unlike POST /points which adds. Note it does not clamp negatives."
+          },
+          "response": []
+        },
+        {
+          "name": "Update student - points as string is ignored",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('points still 42', () => {",
+                  "    // updateStudent() requires `typeof fields.points === 'number'`,",
+                  "    // so \"99\" is dropped silently.",
+                  "    pm.expect(pm.response.json().points).to.eql(42);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"points\": \"99\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update student - partial (name only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('name updated and trimmed', () => pm.expect(body.name).to.eql('Ada Byron'));",
+                  "pm.test('points untouched at 42', () => pm.expect(body.points).to.eql(42));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"  Ada Byron  \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "Both fields are optional; omitted ones are left alone."
+          },
+          "response": []
+        },
+        {
+          "name": "Update student - empty body is a no-op",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('nothing changed', () => {",
+                  "    pm.expect(body.name).to.eql('Ada Byron');",
+                  "    pm.expect(body.points).to.eql(42);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns ok', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ ok: true });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete student - already gone (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Not found' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "Deleting twice. Reliable only in a serial run: nextId is max(remaining)+1, so this id is free again and a concurrent create would take it."
+          },
+          "response": []
+        },
+        {
+          "name": "List students - deleted one is gone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('student no longer listed', () => {",
+                  "    const id = Number(pm.collectionVariables.get('studentId'));",
+                  "    pm.expect(pm.response.json().some((s) => s.id === id)).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Unknown ids",
+      "item": [
+        {
+          "name": "Update - unknown id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Not found' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ghost\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "999999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add points - unknown id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Not found' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/999999/points",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "999999", "points"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete - unknown id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Not found' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "999999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update - non-numeric id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('returns the error message', () => {",
+                  "    // Number('abc') is NaN, which matches no student.",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Not found' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ghost\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/abc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "abc"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Logout",
+      "item": [
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns ok', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ ok: true });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logout"]
+            },
+            "description": "req.session.destroy() — the cookie may still be sent afterwards, but the server-side session is gone."
+          },
+          "response": []
+        },
+        {
+          "name": "Session - after logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reports logged out', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ loggedIn: false });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "session"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Students - after logout (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('guard is back on', () => pm.response.to.have.status(401));",
+                  "pm.test('returns the error message', () => {",
+                  "    pm.expect(pm.response.json()).to.eql({ error: 'Not authenticated' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "The destroyed session no longer satisfies requireAuth, even if the stale cookie is replayed."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

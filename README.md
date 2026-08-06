@@ -74,6 +74,81 @@ Points Counter running at http://localhost:3000
 6. **Stop session** — Click **Stop session**. The points earned this session are
    committed to the student's overall total and you return to the dashboard.
 
+## Testing
+
+The API test suite lives in `app_tests/` and is written with pytest + httpx. It
+tests the running HTTP API rather than importing the Node code, so **the server
+must already be running** before you invoke pytest — the suite does not start
+one for you.
+
+### Requirements
+
+- Python 3.12 or newer (CI uses 3.12)
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r app_tests/requirements.txt
+```
+
+### Running the tests
+
+Start the server in one terminal:
+
+```bash
+npm start
+```
+
+Then, from the repo root, in another terminal:
+
+```bash
+pytest
+```
+
+`pytest.ini` already points at `app_tests/tests`, puts the repo root on
+`sys.path`, and enables `asyncio_mode = auto`, so no extra flags are needed. Run
+in parallel with:
+
+```bash
+pytest -n auto --dist load
+```
+
+A session-scoped fixture polls `/api/session` with exponential backoff before
+the first test, so starting the server a moment earlier is enough — no manual
+wait loop required. If nothing is listening, the suite fails fast with a message
+telling you to start the server.
+
+### Configuration
+
+| Variable           | Default                 | Purpose                                        |
+| ------------------ | ----------------------- | ---------------------------------------------- |
+| `POINTS_API_URL`   | `http://127.0.0.1:3000` | Base URL the tests hit.                        |
+| `TEACHER_PASSWORD` | `teacher`               | Must match the password the server started with. |
+
+If you started the server with a custom password, pass the same one to pytest:
+
+```bash
+POINTS_API_URL=http://127.0.0.1:3000 TEACHER_PASSWORD="your-password" pytest
+```
+
+> **The tests write to real data.** They run against
+> `server/data/students.json`. Each test creates a uniquely-named student and
+> deletes it at teardown, but back the file up first if it holds data you care
+> about.
+
+### In CI
+
+`.github/workflows/api-tests.yml` runs the same suite on every push to `main`
+and on pull requests: `npm ci`, install `app_tests/requirements.txt`, start
+`node server/server.js` in the background, then
+`pytest -n auto --dist load --junitxml=pytest-report.xml`. The JUnit report is
+uploaded as the `pytest-report` artifact.
+
+### Postman collection
+
+There is also a Postman/newman collection covering the same API in
+`app_tests/postman/` — see `app_tests/postman/README.md` for how to run it.
+
 ## Data storage
 
 Student data is stored in `server/data/students.json`. The file is created
@@ -92,10 +167,16 @@ file.
 │   ├── store.js          # JSON-file-backed student store
 │   └── data/
 │       └── students.json # persisted student data (auto-created)
-└── public/               # static frontend
-    ├── index.html
-    ├── css/styles.css
-    └── js/               # api, audio, effects, timer, students, session, app
+├── public/               # static frontend
+│   ├── index.html
+│   ├── css/styles.css
+│   └── js/               # api, audio, effects, timer, students, session, app
+├── pytest.ini            # pytest config (testpaths, asyncio mode)
+└── app_tests/            # API tests
+    ├── conftest.py       # shared fixtures (base_url, auth_client, student)
+    ├── requirements.txt  # httpx, pytest, pytest-asyncio, pytest-xdist
+    ├── tests/            # pytest test modules
+    └── postman/          # Postman collection + newman instructions
 ```
 
 ## API reference
