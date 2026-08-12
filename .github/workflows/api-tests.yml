@@ -34,6 +34,12 @@ jobs:
 
       - run: pip install -r app_tests/requirements.txt
 
+      # pip installs the Playwright driver, not the browser binaries. Without
+      # this the FE tests fail on the runner even though they pass locally.
+      # --with-deps pulls the system libs chromium needs on a bare ubuntu image.
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
+
       - name: Start API
         run: |
           node server/server.js > server.log 2>&1 &

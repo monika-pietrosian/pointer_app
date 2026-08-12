@@ -47,10 +47,12 @@ def teacher_password() -> str:
 def server_is_up(base_url: str) -> None:
     """Block until the API answers, so a slow boot is not a test failure.
 
-    Synchronous on purpose: a session-scoped *async* fixture has to share an
-    event loop with every test that uses it, which means matching
-    ``loop_scope`` everywhere. ``asyncio.run`` keeps that plumbing out of the
-    way for a probe that runs once per worker.
+    Still synchronous, but not for the original reason: pytest.ini now pins
+    ``asyncio_default_fixture_loop_scope = session`` (the Playwright plugin
+    requires it), so an async version would no longer need loop_scope plumbing.
+    ``asyncio.run`` is kept because it gives this probe a loop of its own --
+    a wedged probe cannot leave a half-cancelled task on the session loop that
+    every subsequent test now shares.
     """
 
     async def probe() -> httpx.Response:

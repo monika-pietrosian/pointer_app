@@ -1,4 +1,15 @@
 httpx>=0.27
 pytest>=8.2
 pytest-asyncio>=0.24
+# The *asyncio* Playwright plugin, not pytest-playwright. Both register the same
+# fixtures and CLI options, so installing both makes pytest refuse to start --
+# the plugin raises PLUGIN_INCOMPATIBLE_MESSAGE at addoption time. We need this
+# one because the API tests are pytest-asyncio: sync Playwright drives its own
+# loop via greenlet, and pytest-asyncio's per-test Runner.run() then dies with
+# "cannot be called from a running event loop".
+#
+# Brings pytest-base-url, whose base_url fixture app_tests/conftest.py
+# overrides. Needs `playwright install chromium` too -- pip only installs the
+# driver, not the browsers.
+pytest-playwright-asyncio>=0.9
 pytest-xdist>=3.6
