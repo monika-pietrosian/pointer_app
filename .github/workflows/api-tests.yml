@@ -15,6 +15,12 @@ jobs:
       SESSION_SECRET: ci-session-secret-not-a-real-one
       PORT: "3000"
       POINTS_API_URL: http://127.0.0.1:3000
+      # Keeps the suite off server/data/students.json, so a test run can never
+      # show up as a diff on the committed store. Relative to the repo root,
+      # which is the cwd of both the "Start API" step and pytest. Both the
+      # server and the conftest guard read this, so they must agree -- see
+      # RISKS.md.
+      POINTS_DATA_FILE: app_tests/data/students.test.json
 
     steps:
       - uses: actions/checkout@v4
