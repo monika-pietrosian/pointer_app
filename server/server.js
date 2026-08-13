@@ -76,4 +76,8 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.listen(PORT, () => {
   console.log(`Points Counter running at http://localhost:${PORT}`);
+  // Printed on every boot on purpose: pointing a test run at the wrong file is
+  // silent and destructive, and this line is the only place it shows up before
+  // the damage. See RISKS.md.
+  console.log(`Student data file: ${store.dataFile}`);
 });

@@ -28,11 +28,20 @@ npm install
 
 The app reads two optional environment variables:
 
-| Variable           | Default                      | Purpose                              |
-| ------------------ | ---------------------------- | ------------------------------------ |
-| `TEACHER_PASSWORD` | `teacher`                    | Password required to log in.         |
-| `SESSION_SECRET`   | `points-counter-dev-secret`  | Secret used to sign session cookies. |
-| `PORT`             | `3000`                       | Port the server listens on.          |
+| Variable            | Default                      | Purpose                                  |
+| ------------------- | ---------------------------- | ---------------------------------------- |
+| `TEACHER_PASSWORD`  | `teacher`                    | Password required to log in.             |
+| `SESSION_SECRET`    | `points-counter-dev-secret`  | Secret used to sign session cookies.     |
+| `PORT`              | `3000`                       | Port the server listens on.              |
+| `POINTS_DATA_FILE`  | `server/data/students.json`  | JSON file the store reads and writes.    |
+
+`POINTS_DATA_FILE` is read once at startup and a relative value is resolved
+against the working directory you launched from, so prefer an absolute path. The
+server prints the file it resolved on boot:
+
+```
+Student data file: /path/to/server/data/students.json
+```
 
 There is a `.env` file in the repo, but the server does **not** load it
 automatically (no `dotenv` dependency). Set the variables inline instead:
@@ -93,11 +102,16 @@ pip install -r app_tests/requirements.txt
 
 ### Running the tests
 
-Start the server in one terminal:
+Start the server in one terminal **against the test store**, not the real one:
 
 ```bash
-npm start
+npm run start:test
 ```
+
+That is `npm start` with `POINTS_DATA_FILE=app_tests/data/students.test.json`, so
+the suite creates and deletes students in its own file and leaves
+`server/data/students.json` alone. Check the boot log says
+`Student data file: .../app_tests/data/students.test.json`.
 
 Then, from the repo root, in another terminal:
 
@@ -131,10 +145,14 @@ If you started the server with a custom password, pass the same one to pytest:
 POINTS_API_URL=http://127.0.0.1:3000 TEACHER_PASSWORD="your-password" pytest
 ```
 
-> **The tests write to real data.** They run against
-> `server/data/students.json`. Each test creates a uniquely-named student and
-> deletes it at teardown, but back the file up first if it holds data you care
-> about.
+> **The tests write real data to whatever file the server was started with.**
+> pytest cannot reconfigure an already-running server, so `POINTS_DATA_FILE` has
+> to be set on the *server*. A session fixture
+> (`real_data_file_is_untouched`) creates one canary student and fails the run
+> if it shows up in `server/data/students.json`, so a forgotten
+> `npm run start:test` costs one row rather than the whole file. The guard only
+> works against a local server, and it only proves the store is *not* the real
+> one. See [RISKS.md](RISKS.md).
 
 ### In CI
 
@@ -151,10 +169,14 @@ There is also a Postman/newman collection covering the same API in
 
 ## Data storage
 
-Student data is stored in `server/data/students.json`. The file is created
-automatically on first run and updated atomically (write-to-temp then rename).
-Points never drop below zero. To reset all data, stop the server and delete that
-file.
+Student data is stored in `server/data/students.json`, or in `POINTS_DATA_FILE`
+when that is set. The file is created automatically on first run and updated
+atomically (write-to-temp then rename). Points never drop below zero. To reset
+all data, stop the server and delete that file.
+
+The test suite uses a second file, `app_tests/data/students.test.json`, which is
+gitignored — it is recreated on boot and left dirty by any failed test, so
+committing it would only produce churn.
 
 ## Project structure
 
@@ -175,6 +197,8 @@ file.
 └── app_tests/            # API tests
     ├── conftest.py       # shared fixtures (base_url, auth_client, student)
     ├── requirements.txt  # httpx, pytest, pytest-asyncio, pytest-xdist
+    ├── data/
+    │   └── students.test.json  # test store (gitignored, auto-created)
     ├── tests/            # pytest test modules
     └── postman/          # Postman collection + newman instructions
 ```

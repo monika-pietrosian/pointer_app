@@ -3,9 +3,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILE = path.join(DATA_DIR, 'students.json');
-const TMP_FILE = path.join(DATA_DIR, 'students.json.tmp');
+// Which JSON file backs the store. Overridable so a test run can point at its
+// own file instead of the teacher's real data -- see RISKS.md for what this
+// does and does not protect.
+//
+// Resolved once, at require time: changing POINTS_DATA_FILE while the process
+// is running has no effect. A relative value is resolved against the process
+// cwd, not against server/, so prefer an absolute path.
+const DEFAULT_DATA_FILE = path.join(__dirname, 'data', 'students.json');
+const DATA_FILE = process.env.POINTS_DATA_FILE
+  ? path.resolve(process.env.POINTS_DATA_FILE)
+  : DEFAULT_DATA_FILE;
+const DATA_DIR = path.dirname(DATA_FILE);
+const TMP_FILE = `${DATA_FILE}.tmp`;
 
 function ensureFile() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -85,6 +95,9 @@ function addPoints(id, delta) {
 }
 
 module.exports = {
+  // Exposed so the boot log can state which file this process will write to.
+  // Not served over HTTP: the path is a local filesystem detail.
+  dataFile: DATA_FILE,
   getStudents,
   getStudent,
   createStudent,

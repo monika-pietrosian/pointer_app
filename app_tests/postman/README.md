@@ -38,9 +38,12 @@ npx newman run app_tests/postman/points-counter.postman_collection.json \
   id in the `studentId` collection variable, and later requests assert on running
   point totals (`0 → 5 → 15 → 0 → 42`). Run the collection top to bottom rather
   than firing individual requests out of sequence.
-- **Data is real.** The store is a JSON file at `server/data/students.json`, so a
-  run touches your actual student data. The collection creates and then deletes
-  everything it makes, but back the file up first if it holds data you care about.
+- **Data is real, and newman cannot pick the file.** The store is whichever JSON
+  file the *server* was started with, so start it against the test store first:
+  `npm run start:test` (see RISKS.md). Under a plain `npm start` a run touches
+  your actual student data in `server/data/students.json`. The collection creates
+  and then deletes everything it makes, and unlike pytest it has no canary guard,
+  so check the server's `Student data file:` boot line before running it.
 - **Ids get recycled.** `store.nextId()` is `max(remaining) + 1`, so deleting the
   highest-id student frees that id for the next create. The
   `Delete student - already gone (404)` case is only reliable because this

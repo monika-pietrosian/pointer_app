@@ -1,0 +1,7 @@
+# Test store. Recreated by the server on boot (store.js ensureFile), and left
+# dirty by any failed test, so committing it would only produce churn.
+app_tests/data/students.test.json
+app_tests/data/*.json.tmp
+
+# Real store's atomic-write scratch file.
+server/data/students.json.tmp
