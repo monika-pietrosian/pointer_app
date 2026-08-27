@@ -85,10 +85,16 @@ Points Counter running at http://localhost:3000
 
 ## Testing
 
-The API test suite lives in `app_tests/` and is written with pytest + httpx. It
-tests the running HTTP API rather than importing the Node code, so **the server
-must already be running** before you invoke pytest — the suite does not start
-one for you.
+The test suite lives in `app_tests/tests/`, split into two kinds that share one
+`pytest` invocation and one running server:
+
+- `app_tests/tests/BE/` — API tests written with pytest + httpx. They hit the
+  running HTTP API directly rather than importing the Node code.
+- `app_tests/tests/FE/` — browser tests written with pytest + Playwright
+  (`pytest-playwright-asyncio`). They drive a real Chromium against
+  `public/index.html` and assert on rendered DOM, not on API responses.
+
+Both need **the server already running** — neither suite starts one for you.
 
 ### Requirements
 
@@ -98,7 +104,13 @@ one for you.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r app_tests/requirements.txt
+playwright install chromium
 ```
+
+`pip install` only pulls in the Playwright Python driver; the browser binary
+itself is a separate download, which is what `playwright install` does. Skip it
+and every FE test fails immediately with "Executable doesn't exist" — it's not
+optional, even if you only plan to run the BE suite today.
 
 ### Running the tests
 
@@ -120,8 +132,15 @@ pytest
 ```
 
 `pytest.ini` already points at `app_tests/tests`, puts the repo root on
-`sys.path`, and enables `asyncio_mode = auto`, so no extra flags are needed. Run
-in parallel with:
+`sys.path`, and enables `asyncio_mode = auto`, so no extra flags are needed. A
+plain `pytest` collects both the BE and FE suites; run only one with:
+
+```bash
+pytest app_tests/tests/BE   # API tests only, no browser needed
+pytest app_tests/tests/FE   # Playwright tests only
+```
+
+Run in parallel with:
 
 ```bash
 pytest -n auto --dist load
@@ -131,6 +150,25 @@ A session-scoped fixture polls `/api/session` with exponential backoff before
 the first test, so starting the server a moment earlier is enough — no manual
 wait loop required. If nothing is listening, the suite fails fast with a message
 telling you to start the server.
+
+### Debugging a failing Playwright test
+
+By default the FE suite runs headless and keeps nothing. To capture evidence
+for a failure, pass the same flags CI uses:
+
+```bash
+pytest app_tests/tests/FE --tracing=retain-on-failure --screenshot=only-on-failure --video=retain-on-failure
+```
+
+Artifacts land under `test-results/<test-name>/` (gitignored). Open a trace
+with:
+
+```bash
+playwright show-trace test-results/<test-name>/trace.zip
+```
+
+That opens an interactive timeline of every action, network request, and DOM
+snapshot in the test — usually faster than reproducing the failure by hand.
 
 ### Configuration
 
@@ -156,11 +194,29 @@ POINTS_API_URL=http://127.0.0.1:3000 TEACHER_PASSWORD="your-password" pytest
 
 ### In CI
 
-`.github/workflows/api-tests.yml` runs the same suite on every push to `main`
-and on pull requests: `npm ci`, install `app_tests/requirements.txt`, start
-`node server/server.js` in the background, then
-`pytest -n auto --dist load --junitxml=pytest-report.xml`. The JUnit report is
-uploaded as the `pytest-report` artifact.
+`.github/workflows/api-tests.yml` runs the same suites — BE and FE together —
+on every push to `main` and on pull requests: `npm ci`, install
+`app_tests/requirements.txt`, `playwright install --with-deps chromium` (the
+browser binary plus the system libs Chromium needs on a bare Ubuntu runner),
+start `node server/server.js` in the background, then
+
+```bash
+pytest -n auto --dist load --junitxml=pytest-report.xml \
+  --tracing=retain-on-failure --screenshot=only-on-failure --video=retain-on-failure
+```
+
+Two artifacts are uploaded, both with `if: always()` so a failed run doesn't
+lose them:
+
+- **`pytest-report`** — the JUnit XML (`pytest-report.xml`), always produced.
+- **`playwright-artifacts`** — traces, screenshots, and videos from
+  `test-results/`, but only for FE tests that failed (`retain-on-failure` /
+  `only-on-failure` skip anything that passed). On an all-green run this
+  artifact is empty and the upload step is a no-op.
+
+Download `playwright-artifacts` from a failed run's Actions summary page and
+open the trace locally with `playwright show-trace` as above — it's the
+fastest way to see what the browser actually saw without rerunning CI.
 
 ### Postman collection
 

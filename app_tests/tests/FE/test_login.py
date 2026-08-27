@@ -71,6 +71,34 @@ async def test_login_with_correct_password_shows_the_dashboard(
     await expect(page.get_by_placeholder("Password")).to_have_value("")
 
 
+async def test_logout_hides_the_dashboard(
+    page: Page, teacher_password: str
+) -> None:
+    # Relative URL: the context's base_url comes from the session-scoped
+    # base_url fixture in app_tests/conftest.py, so POINTS_API_URL steers the
+    # browser and httpx at the same server.
+    await page.goto("/")
+
+    login_view = page.locator("#view-login")
+    await expect(login_view).to_be_visible()
+
+    await page.get_by_placeholder("Password").fill(teacher_password)
+    await page.get_by_role("button", name="Start").click()
+
+    # app.js only calls showDashboard() once api.login() resolves, so the view
+    # swap is the frontend's own statement that the request succeeded. On a 401
+    # it would instead unhide #login-error and stay put.
+    await expect(page.locator("#view-dashboard")).to_be_visible()
+    await expect(login_view).to_be_hidden()
+    await expect(page.locator("#login-error")).to_be_hidden()
+
+    # The handler clears the field after a successful login; a password left
+    # sitting in the DOM would survive into the next screenshot or trace.
+    await expect(page.get_by_placeholder("Password")).to_have_value("")
+    await page.get_by_role("button", name="Log out").click()
+    await expect(page.locator("#view-dashboard")).to_be_hidden()
+
+
 async def test_login_with_incorrect_password_hides_the_dashboard(page: Page) -> None:
     await page.goto("/")
 

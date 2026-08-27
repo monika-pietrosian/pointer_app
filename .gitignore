@@ -5,3 +5,6 @@ app_tests/data/*.json.tmp
 
 # Real store's atomic-write scratch file.
 server/data/students.json.tmp
+
+# Playwright artifacts (traces, videos, screenshots) from local test runs.
+test-results/

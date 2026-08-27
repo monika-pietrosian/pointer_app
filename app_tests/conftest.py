@@ -7,9 +7,9 @@ under ``pytest -n auto`` every xdist worker would race to bind the same port.
 Parallel safety comes from two rules, enforced by the fixtures below:
 
 1. **One client per test.** Each ``client`` has its own cookie jar, so each test
-   holds its own express-session. A logout in one test cannot log out another.
+   has its own express-session. A logout in one test cannot log out another.
 2. **One student per test.** ``student`` creates a uniquely-named student and
-   deletes it afterwards, so no test depends on global store contents.
+   deletes it afterwards, so no test depends on globally stored contents.
 
 Data safety: the suite is meant to run against a server started with
 ``POINTS_DATA_FILE`` pointing at ``app_tests/data/students.test.json``
@@ -153,9 +153,9 @@ def real_data_file_is_untouched(
         if landed:
             pytest.fail(
                 f"the server at {base_url} is writing to {REAL_DATA_FILE}, which holds "
-                f"real student data. Restart it against the test store:\n"
-                f"    npm run start:test\n"
-                f"(or set POINTS_DATA_FILE yourself), then re-run pytest."
+                "real student data. Restart it against the test store:\n"
+                "    npm run start:test\n"
+                "(or set POINTS_DATA_FILE yourself), then re-run pytest."
             )
 
     asyncio.run(probe())
