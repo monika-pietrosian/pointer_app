@@ -373,7 +373,10 @@ async def test_renaming_a_student_via_the_ui_edit_button(
         dashboard_page.once("dialog", real_answer)
         await row.locator(".edit").click()
         await expect(dashboard_page.locator(".student-row", has_text=new_name)).to_be_visible()
-        await expect(row).to_be_hidden()
+        # `row`'s has_text filter is a substring match, and new_name contains
+        # unique_name as a substring -- so `row` itself now matches the
+        # *renamed* element too. Check for the exact old name instead.
+        await expect(dashboard_page.get_by_text(unique_name, exact=True)).to_have_count(0)
     finally:
         await auth_client.delete(f"/api/students/{created['id']}")
 
@@ -473,14 +476,14 @@ async def test_a_failed_create_alerts_and_keeps_the_typed_name(
     students.onCreate(name)`` resolves -- so a failed create should alert
     with the server's own error message and leave the typed name sitting in
     the field.
+
+    The create-form handler is ``async``, so unlike a synchronous handler's
+    dialog (which blocks the click itself until dismissed), this alert only
+    fires after a real network round trip started by that handler --
+    ``click()`` returns as soon as the event dispatches, well before that
+    round trip finishes. ``expect_event("dialog")`` waits for it instead of
+    racing a bare assert against the fetch.
     """
-    seen_dialogs: list[Dialog] = []
-
-    async def capture_and_accept(dialog: Dialog) -> None:
-        seen_dialogs.append(dialog)
-        await dialog.accept()
-
-    dashboard_page.on("dialog", capture_and_accept)
 
     async def fail_create(route: Route) -> None:
         if route.request.method != "POST":
@@ -495,12 +498,14 @@ async def test_a_failed_create_alerts_and_keeps_the_typed_name(
     await dashboard_page.route("**/api/students", fail_create)
 
     await dashboard_page.get_by_placeholder("New student name").fill(unique_name)
-    await dashboard_page.get_by_role("button", name="Add").click()
+    async with dashboard_page.expect_event("dialog") as dialog_info:
+        await dashboard_page.get_by_role("button", name="Add").click()
+    dialog = await dialog_info.value
+    assert dialog.type == "alert"
+    assert dialog.message == "Failed to add student: Name is required"
+    await dialog.accept()
 
     await expect(dashboard_page.get_by_placeholder("New student name")).to_have_value(unique_name)
-    assert len(seen_dialogs) == 1
-    assert seen_dialogs[0].type == "alert"
-    assert seen_dialogs[0].message == "Failed to add student: Name is required"
 
 
 async def test_reloading_while_logged_in_keeps_the_dashboard_populated(
@@ -522,3 +527,122 @@ async def test_reloading_while_logged_in_keeps_the_dashboard_populated(
     await expect(dashboard_page.locator(".student-row", has_text=unique_name)).to_be_visible()
 
     await auth_client.delete(f"/api/students/{created['id']}")
+
+
+# --- Timer (independent of the session; set/cleared from inside view-session) ---
+
+
+async def test_setting_a_timer_shows_the_countdown(
+    session_page: tuple[Page, dict],
+) -> None:
+    """timer.start() parses the input, un-hides #timer-wrap, and renders the
+    parsed duration into #timer-display -- and app.js only clears/blurs the
+    input on a truthy (successful) start (timer.js: ``input.blur()`` matters
+    because points are awarded on a document-level keydown, and a focused
+    text field would eat z/x/c as typing instead).
+    """
+    page, _ = session_page
+    wrap = page.locator("#timer-wrap")
+    await expect(wrap).to_be_hidden()
+
+    await page.get_by_placeholder("Enter a time").fill("6:00")
+    await page.get_by_role("button", name="Set timer").click()
+
+    await expect(wrap).to_be_visible()
+    await expect(page.locator("#timer-display")).to_have_text("6:00")
+    await expect(page.get_by_placeholder("Enter a time")).to_have_value("")
+    await expect(page.get_by_placeholder("Enter a time")).not_to_be_focused()
+
+
+async def test_setting_a_timer_with_unparseable_input_alerts_and_keeps_the_value(
+    session_page: tuple[Page, dict],
+) -> None:
+    """timer.parse() returns 0 for input with no readable time in it, so
+    timer.start() returns false and app.js's ``if (!timer.start(...))``
+    branch alerts instead of clearing the field. #timer-wrap must stay
+    hidden too -- start() only un-hides it after a successful parse.
+
+    The submit handler is synchronous (unlike the create-form's, which is
+    async), so window.alert() blocks it and, with it, the click -- same
+    reasoning as test_starting_session_without_adding_a_student, so this
+    uses the same page.on("dialog") + bare-assert pattern rather than
+    expect_event.
+    """
+    page, _ = session_page
+    seen_dialogs: list[Dialog] = []
+
+    async def capture_and_accept(dialog: Dialog) -> None:
+        seen_dialogs.append(dialog)
+        await dialog.accept()
+
+    page.on("dialog", capture_and_accept)
+
+    await page.get_by_placeholder("Enter a time").fill("banana")
+    await page.get_by_role("button", name="Set timer").click()
+
+    assert len(seen_dialogs) == 1
+    assert seen_dialogs[0].type == "alert"
+    assert seen_dialogs[0].message == 'Could not read that time. Try 6:00, 90 or "5 minutes".'
+    await expect(page.get_by_placeholder("Enter a time")).to_have_value("banana")
+    await expect(page.locator("#timer-wrap")).to_be_hidden()
+
+
+async def test_clearing_the_timer_hides_it_and_clears_the_input(
+    session_page: tuple[Page, dict],
+) -> None:
+    """clear-timer-btn's handler is ``timer.hide(); el('timer-input').value =
+    '';`` -- independent of whether a countdown is actually running.
+    """
+    page, _ = session_page
+    await page.get_by_placeholder("Enter a time").fill("6:00")
+    await page.get_by_role("button", name="Set timer").click()
+    await expect(page.locator("#timer-wrap")).to_be_visible()
+
+    await page.get_by_placeholder("Enter a time").fill("should be cleared")
+    await page.get_by_role("button", name="Clear").click()
+
+    await expect(page.locator("#timer-wrap")).to_be_hidden()
+    await expect(page.get_by_placeholder("Enter a time")).to_have_value("")
+
+
+async def test_timer_counts_down_and_resets_when_it_expires(
+    session_page: tuple[Page, dict],
+) -> None:
+    """tick() decrements #timer-display once a second; on reaching 0 it stops
+    the interval, fires sfx.timeUp(), and schedules reset() 1.2s later, which
+    re-hides #timer-wrap. Uses a real, short countdown rather than a fake
+    clock -- there is no test hook into timer.js's internal setInterval --
+    and only asserts the start and end states, not every intermediate
+    second, since exact interval timing under a loaded CI runner is not
+    something this test should be pinned to.
+    """
+    page, _ = session_page
+    await page.get_by_placeholder("Enter a time").fill("3 seconds")
+    await page.get_by_role("button", name="Set timer").click()
+
+    display = page.locator("#timer-display")
+    await expect(display).to_have_text("0:03")
+    await expect(display).to_have_text("0:00", timeout=8000)
+
+    # reset() runs 1.2s after hitting zero and re-hides the bar.
+    await expect(page.locator("#timer-wrap")).to_be_hidden(timeout=3000)
+
+
+async def test_stopping_a_session_hides_a_running_timer(
+    session_page: tuple[Page, dict],
+) -> None:
+    """session.stop(): ``timer.hide(); // stopping the session also stops any
+    running timer`` -- runs unconditionally, before the earned-points branch.
+    Asserted on #timer-wrap's own class, not just "the whole session view is
+    gone", since the latter would pass even if timer.hide() were never
+    called.
+    """
+    page, _ = session_page
+    await page.get_by_placeholder("Enter a time").fill("6:00")
+    await page.get_by_role("button", name="Set timer").click()
+    await expect(page.locator("#timer-wrap")).to_be_visible()
+
+    await page.get_by_role("button", name="Stop session").click()
+    await expect(page.locator("#view-dashboard")).to_be_visible()
+
+    await expect(page.locator("#timer-wrap")).to_have_class("timer-wrap hidden")

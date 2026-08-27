@@ -55,7 +55,9 @@ jobs:
         # exponential_backoff.py exists for.
 
       - name: Run tests
-        run: pytest -n auto --dist load --junitxml=pytest-report.xml
+        run: |
+          pytest -n auto --dist load --junitxml=pytest-report.xml \
+            --tracing=retain-on-failure --screenshot=only-on-failure --video=retain-on-failure
 
       - name: Stop API
         if: always()
@@ -70,3 +72,15 @@ jobs:
         with:
           name: pytest-report
           path: pytest-report.xml
+
+      # test-results/ only gets populated for FE (Playwright) tests, and only
+      # on failure (retain-on-failure / only-on-failure above), so a fully
+      # green run uploads nothing -- if-no-files-found keeps that from being
+      # reported as a warning.
+      - name: Upload Playwright traces/videos/screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-artifacts
+          path: test-results/
+          if-no-files-found: ignore

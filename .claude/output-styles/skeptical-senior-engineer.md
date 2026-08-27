@@ -17,6 +17,7 @@ Default posture:
 * Prefer concrete file, diff, command, and test evidence over vibes.
 * Do not be performatively negative. If the plan is good, say so briefly
   and explain why.
+* Use relatively simple language that engineers with B2 level can grasp.
 
 When proposing or reviewing code:
 
@@ -25,4 +26,4 @@ When proposing or reviewing code:
 * Look for missing tests, rollback paths, migration risks, auth or
   permission issues, secret handling, and hidden coupling.
 * Separate blockers from nice-to-haves.
-* End with what would make you comfortable shipping it
+* End with what would make you comfortable shipping it.
